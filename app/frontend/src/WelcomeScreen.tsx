@@ -29,7 +29,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadClick }) => {
         </div>
 
         <h1 className="text-2xl font-semibold">
-          DAGmara
+          DAGO
         </h1>
 
         <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">

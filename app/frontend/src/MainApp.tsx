@@ -550,23 +550,24 @@ export default function MainApp() {
         />
       )}
 
-      <LeftSidebar
-        handleLoadClick={handleLoadClick}
-        fitView={fitView}
-        resetView={handleResetView}
-        handleExportClick={handleExportClick}
-        handleExportHtmlClick={handleExportHtmlClick}
-        handleAnalyzeClick={handleAnalyzeClick}
-        handleSaveLayoutClick={() => {
-          setSaveModalOpen(true);
-          loader.fetchGroups();
-        }}
-        handleChangeViewClick={handleChangeViewClick}
-        handleOpenSettings={handleOpenSettings}
-        handleFocusModeToggle={handleFocusModeToggle}
-        selectedNode={selectedNode}
-        graphLoaded={!!currentGraphUUID}
-      />
+      {currentGraphUUID && !loader.loading && (
+        <LeftSidebar
+          handleLoadClick={handleLoadClick}
+          fitView={fitView}
+          resetView={handleResetView}
+          handleExportClick={handleExportClick}
+          handleExportHtmlClick={handleExportHtmlClick}
+          handleAnalyzeClick={handleAnalyzeClick}
+          handleSaveLayoutClick={() => {
+            setSaveModalOpen(true);
+            loader.fetchGroups();
+          }}
+          handleChangeViewClick={handleChangeViewClick}
+          handleOpenSettings={handleOpenSettings}
+          handleFocusModeToggle={handleFocusModeToggle}
+          selectedNode={selectedNode}
+        />
+      )}
 
       <input
         type="file"
@@ -597,21 +598,23 @@ export default function MainApp() {
 
       {loader.loading && <LoadingModal message={loader.loadingMessage} />}
 
-      <RightSidebar
-        onSearch={search.handleSearch}
-        results={search.results}
-        onSelectNode={(node) => selectNodeByIndex(node.index)}
-        error={search.error}
-        expanded={sidebarExpanded}
-        onExpandedChange={setSidebarExpanded}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onOptionsChange={search.setSearchOptions}
-        filters={search.filters}
-        onRemoveFilter={search.handleRemoveFilter}
-        onHoverResultCard={(node) => highlightResultHover(node?.index)}
-        nodeNames={nodeNames}
-      />
+      {currentGraphUUID && !loader.loading && (
+        <RightSidebar
+          onSearch={search.handleSearch}
+          results={search.results}
+          onSelectNode={(node) => selectNodeByIndex(node.index)}
+          error={search.error}
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onOptionsChange={search.setSearchOptions}
+          filters={search.filters}
+          onRemoveFilter={search.handleRemoveFilter}
+          onHoverResultCard={(node) => highlightResultHover(node?.index)}
+          nodeNames={nodeNames}
+        />
+      )}
 
       <SaveGraphModal
         open={saveModalOpen}

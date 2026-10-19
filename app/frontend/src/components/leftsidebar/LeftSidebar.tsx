@@ -26,7 +26,6 @@ interface LeftSidebarProps {
   handleOpenSettings: () => void;
   handleFocusModeToggle: () => void;
   selectedNode?: NodeInfoProps | null;
-  graphLoaded: boolean;
 }
 
 interface Item {
@@ -59,7 +58,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleOpenSettings,
   handleFocusModeToggle,
   selectedNode,
-  graphLoaded,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [width, setWidth] = useState<number>(COLLAPSED_W);
@@ -81,19 +79,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     if (!expanded) return;
     localStorage.setItem(LS_KEY, String(width));
   }, [width, expanded]);
-
-  useEffect(() => {
-    if (!graphLoaded) {
-      setExpanded(false);
-      setWidth(COLLAPSED_W);
-      return;
-    }
-
-    setExpanded(true);
-    setWidth(
-      clamp(lastExpandedWidthRef.current, MIN_W, MAX_W)
-    );
-  }, [graphLoaded]);
 
   const isCollapsed = width <= COLLAPSED_W + 8;
   const isCompact = expanded && width < FULL_W;
