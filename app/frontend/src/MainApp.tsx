@@ -566,7 +566,6 @@ export default function MainApp() {
           handleOpenSettings={handleOpenSettings}
           handleFocusModeToggle={handleFocusModeToggle}
           selectedNode={selectedNode}
-          graphLoaded={!!currentGraphUUID}
         />
       )}
 
