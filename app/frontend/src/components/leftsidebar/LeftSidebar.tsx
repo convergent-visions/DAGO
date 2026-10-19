@@ -82,19 +82,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     localStorage.setItem(LS_KEY, String(width));
   }, [width, expanded]);
 
-  useEffect(() => {
-    if (!graphLoaded) {
-      setExpanded(false);
-      setWidth(COLLAPSED_W);
-      return;
-    }
-
-    setExpanded(true);
-    setWidth(
-      clamp(lastExpandedWidthRef.current, MIN_W, MAX_W)
-    );
-  }, [graphLoaded]);
-
   const isCollapsed = width <= COLLAPSED_W + 8;
   const isCompact = expanded && width < FULL_W;
   const isFull = expanded && width >= FULL_W;
