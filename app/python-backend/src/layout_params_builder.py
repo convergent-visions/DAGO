@@ -1,7 +1,7 @@
 import math
 
-import graph_tool as gt
 from layout_params import GraphColourerParams, LayoutDrawerParams, LayoutTuningParams
+from layout_presets import apply_layout_preset
 
 
 def clamp(
@@ -83,8 +83,11 @@ def calculate_layout_params(  # should be developed
 
 
 def build_layout_params(
-    graph: gt.Graph,
+    num_vertices: int,
+    category: str | None = None,
 ) -> LayoutTuningParams:
-    size_score = calculate_graph_size_score(graph.num_vertices())
+    size_score = calculate_graph_size_score(num_vertices)
 
-    return calculate_layout_params(size_score)
+    params = calculate_layout_params(size_score)
+
+    return apply_layout_preset(params, category)

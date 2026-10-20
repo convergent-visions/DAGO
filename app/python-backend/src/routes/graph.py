@@ -1,26 +1,22 @@
-import json
 import io
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, Dict, Optional
 
 import graph_tool as gt
 from flask import Blueprint, Response, jsonify, redirect, request, stream_with_context
-from werkzeug.datastructures import FileStorage
-from generate_graph_structure import make_graph_structure
 from graph_utils import (
     build_gt_graph_from_graph_dict,
     convert_to_json_parsable_representation,
     filter_graph_by_root,
     load_graph_from_uploaded_file,
 )
+from layout.service import compute_layout
 from routes.graph_data import (
     build_graph_from_graph_data,
     build_vertex_metadata_for_graph,
     extract_graph_config,
     linearized_layout_to_pairs,
     normalize_canvas_positions,
-)
-from layout_computation_backend_comms import (
-    send_layout_computation_request_to_grpc_server,
 )
 from routes.helpers import (
     EMPTY_PROPERTY_FIELD,
@@ -31,32 +27,10 @@ from routes.helpers import (
     get_layout_service_config,
     get_logger,
 )
+from werkzeug.datastructures import FileStorage
 
 graph_bp = Blueprint("graph", __name__)
 
-
-def _compute_layout(
-    G_gt: gt.Graph,
-    layout_type: str,
-    layout_host: str,
-    layout_port: int,
-    logger
-) -> tuple[List[tuple], bool]:
-    if layout_type == "radial":
-        logger.debug("Using radial layout computation")
-        return make_graph_structure(G_gt), False
-    else:
-        logger.debug("Using GRPC layout computation")
-        try:
-            postions = send_layout_computation_request_to_grpc_server(
-                G_gt, layout_host, layout_port, logger
-            )
-            return postions, False
-        except Exception as e:
-            logger.warning(
-                f"GRPC server failed to conclude layout computation: {e}. Falling back to radial layout."
-            )
-            return make_graph_structure(G_gt), True
 
 def _progress_event(
     stage: str,
@@ -72,6 +46,7 @@ def _progress_event(
         event["data"] = data
 
     return json.dumps(event) + "\n"
+
 
 @graph_bp.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
@@ -180,34 +155,26 @@ def flask_make_graph_structure():
     filename = file.filename
 
     def generate():
-        yield _progress_event(
-            "parsing",
-            "Parsing graph file..."
-        )
+        yield _progress_event("parsing", "Parsing graph file...")
 
         try:
-            uploaded_file = FileStorage(stream=io.BytesIO(file_contents), filename=filename)
-            G_gt, root_id, godag, full_graph, roots = load_graph_from_uploaded_file(uploaded_file)
-        except ValueError as e:
-            yield _progress_event(
-                "error",
-                str(e)
+            uploaded_file = FileStorage(
+                stream=io.BytesIO(file_contents), filename=filename
             )
+            G_gt, root_id, godag, full_graph, roots = load_graph_from_uploaded_file(
+                uploaded_file
+            )
+        except ValueError as e:
+            yield _progress_event("error", str(e))
             return
         except Exception as e:
             logger.error(f"Error while loading graph: {e}")
-            yield _progress_event(
-                "error",
-                "Failed to construct graph from file"
-            )
+            yield _progress_event("error", "Failed to construct graph from file")
             return
 
         if G_gt is None:
             logger.error(f"Failed to create graph from file {file.filename}")
-            yield _progress_event(
-                "error",
-                "Failed to create graph"
-            )
+            yield _progress_event("error", "Failed to create graph")
             return
 
         logger.debug(
@@ -216,12 +183,13 @@ def flask_make_graph_structure():
         )
 
         yield _progress_event("layout", "Computing graph layout...")
-        canvas_positions, fallback_used = _compute_layout(
+        canvas_positions, fallback_used = compute_layout(
             G_gt,
             layout_type,
             layout_host,
             layout_port,
             logger,
+            category=root_namespace,
         )
 
         if fallback_used:
@@ -231,9 +199,7 @@ def flask_make_graph_structure():
             )
 
         yield _progress_event("normalizing", "Normalizing graph positions...")
-        canvas_positions, space_size = normalize_canvas_positions(
-            canvas_positions
-        )
+        canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
         yield _progress_event("preparing", "Preparing graph data...")
         (
@@ -262,6 +228,7 @@ def flask_make_graph_structure():
                 "space_size": int(space_size * 1.2),
                 "full_graph": full_graph,
                 "roots": roots,
+                "current_category": root_namespace,
             }
         )
         yield _progress_event(
@@ -414,7 +381,9 @@ def load_graph_from_json():
 
     G_gt = build_gt_graph_from_graph_dict(graph_data)
 
-    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, fallback_used = compute_layout(
+        G_gt, layout_type, layout_host, layout_port, logger
+    )
 
     (
         linearized_canvas_positions,
@@ -478,7 +447,14 @@ def recompute_layout(graph_uuid: str):
     if G_gt is None:
         return jsonify({"error": "Graph not available in session"}), 500
 
-    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, fallback_used = compute_layout(
+        G_gt,
+        layout_type,
+        layout_host,
+        layout_port,
+        logger,
+        category=graph_data.get("current_category"),
+    )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
     (
@@ -543,7 +519,9 @@ def change_category(graph_uuid: str):
 
     G_gt = filter_graph_by_root(full_graph, root_vertex)
 
-    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, fallback_used = compute_layout(
+        G_gt, layout_type, layout_host, layout_port, logger, category=category
+    )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
     (
@@ -557,6 +535,7 @@ def change_category(graph_uuid: str):
     graph_data["root_id"] = root_id
     graph_data["layout"] = transformed_canvas_positions
     graph_data["space_size"] = int(space_size * 1.2)
+    graph_data["current_category"] = category
 
     names = extract_vertex_names(G_gt)
 
