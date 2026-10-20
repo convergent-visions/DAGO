@@ -1,6 +1,7 @@
 import logging
 
 import graph_tool as gt
+import grpc
 from generate_graph_structure import make_graph_structure
 from layout_computation_backend_comms import (
     send_layout_computation_request_to_grpc_server,
@@ -31,7 +32,7 @@ def compute_layout(
         )
         return positions, False
 
-    except Exception as e:
+    except grpc.RpcError as e:
         logger.warning(
             f"GRPC server failed to conclude layout computation: {e}. "
             "Falling back to radial layout."

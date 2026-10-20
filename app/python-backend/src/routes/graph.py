@@ -189,6 +189,7 @@ def flask_make_graph_structure():
             layout_host,
             layout_port,
             logger,
+            category=root_namespace,
         )
 
         if fallback_used:
@@ -227,6 +228,7 @@ def flask_make_graph_structure():
                 "space_size": int(space_size * 1.2),
                 "full_graph": full_graph,
                 "roots": roots,
+                "current_category": root_namespace,
             }
         )
         yield _progress_event(
@@ -446,7 +448,12 @@ def recompute_layout(graph_uuid: str):
         return jsonify({"error": "Graph not available in session"}), 500
 
     canvas_positions, fallback_used = compute_layout(
-        G_gt, layout_type, layout_host, layout_port, logger
+        G_gt,
+        layout_type,
+        layout_host,
+        layout_port,
+        logger,
+        category=graph_data.get("current_category"),
     )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
@@ -513,7 +520,7 @@ def change_category(graph_uuid: str):
     G_gt = filter_graph_by_root(full_graph, root_vertex)
 
     canvas_positions, fallback_used = compute_layout(
-        G_gt, layout_type, layout_host, layout_port, logger
+        G_gt, layout_type, layout_host, layout_port, logger, category=category
     )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
@@ -528,6 +535,7 @@ def change_category(graph_uuid: str):
     graph_data["root_id"] = root_id
     graph_data["layout"] = transformed_canvas_positions
     graph_data["space_size"] = int(space_size * 1.2)
+    graph_data["current_category"] = category
 
     names = extract_vertex_names(G_gt)
 
