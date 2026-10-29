@@ -1,4 +1,4 @@
-# DAGO — Explore Large Directed Acyclic visually
+# DAGO — Explore Large Directed Acyclic Graphs
 
 DAGO is an interactive application for exploring directed acyclic graphs with focus for Gene Ontology ([GO](https://geneontology.org/docs/ontology-documentation/)). It helps researchers navigate from broad biological concepts to specific terms, inspect relationships, and examine branches of the ontology in a shared graph view.
 
