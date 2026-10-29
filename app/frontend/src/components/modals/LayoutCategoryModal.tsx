@@ -9,6 +9,10 @@ const DEFAULT_CATEGORY_OPTIONS = [
   { key: "biological_process", label: "Biological Process" },
 ];
 
+const CATEGORY_ORDER = new Map(
+  DEFAULT_CATEGORY_OPTIONS.map(({ key }, index) => [key, index])
+);
+
 function toCategoryLabel(key: string): string {
   return key
     .split("_")
@@ -45,7 +49,12 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
 
   const categoryOptions =
     categories && categories.length > 0
-      ? categories.map((key) => ({ key, label: toCategoryLabel(key) }))
+      ? [...categories]
+          .sort((a, b) =>
+            (CATEGORY_ORDER.get(a) ?? CATEGORY_ORDER.size) -
+            (CATEGORY_ORDER.get(b) ?? CATEGORY_ORDER.size)
+          )
+          .map((key) => ({ key, label: toCategoryLabel(key) }))
       : DEFAULT_CATEGORY_OPTIONS;
 
   useEffect(() => {
