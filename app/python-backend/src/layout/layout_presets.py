@@ -4,19 +4,16 @@ from layout_params import LayoutTuningParams
 
 LAYOUT_PRESETS: dict[str, dict[str, float]] = {
     "biological_process": {
-        "x_interspring_weight": 1.10,
         "box_width_coeff": 1.15,
         "min_required_distance_between_adjacent_levels": 1.10,
+        "nested_colour_child_padding": 1.10,
     },
     "molecular_function": {
-        "x_interspring_weight": 0.90,
-        "box_width_coeff": 0.90,
-        "min_required_distance_between_adjacent_levels": 0.95,
+        "nested_colour_child_padding": 0.90,
     },
     "cellular_component": {
-        "x_interspring_weight": 1.00,
         "box_width_coeff": 1.05,
-        "min_required_distance_between_adjacent_levels": 1.00,
+        "nested_colour_child_padding": 1.25,
     },
 }
 
