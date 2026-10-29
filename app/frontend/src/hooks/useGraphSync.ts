@@ -84,6 +84,8 @@ export function useGraphSync(params: {
         const removed = prevItems.find((c) => !ids.has(c.id));
         if (removed) payload.comment_remove = removed.id;
       }
+    } else if (JSON.stringify(items) !== JSON.stringify(prevItems)) {
+      payload.comments = items;
     }
 
     prevFavsRef.current = favs;
