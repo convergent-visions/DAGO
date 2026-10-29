@@ -3,7 +3,14 @@ import type { CommentItem } from "../../hooks/useComments";
 
 export type LayoutType = "cpp" | "radial";
 
+export type LayoutOverrides = {
+  box_width_coeff?: number;
+  min_required_distance_between_adjacent_levels?: number;
+  nested_colour_child_padding?: number;
+};
+
 export type LoadedGraph = {
+  layout_overrides?: LayoutOverrides;
   graph_hash?: string;
   uuid: string;
   canvas_positions: number[];
@@ -21,6 +28,7 @@ export type LoadedGraph = {
 };
 
 export type ChangeCategoryResult = {
+  layout_overrides?: LayoutOverrides;
   uuid: string;
   canvas_positions: number[];
   links: number[];
@@ -160,23 +168,24 @@ export async function makeGraphStructure(
   return result;
 }
 
-export async function recomputeLayout(graphUuid: string, layoutType: LayoutType) {
+export async function recomputeLayout(graphUuid: string, layoutType: LayoutType, layoutOverrides?: LayoutOverrides) {
   return fetchJson<LoadedGraph>(`${API_BASE}/recompute_layout/${graphUuid}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ layout_type: layoutType }),
+    body: JSON.stringify({ layout_type: layoutType, layout_overrides: layoutOverrides }),
   });
 }
 
 export async function changeCategory(
   graphUuid: string,
   category: string,
-  layoutType: LayoutType
+  layoutType: LayoutType,
+  layoutOverrides?: LayoutOverrides
 ) {
   return fetchJson<ChangeCategoryResult>(`${API_BASE}/change_category/${graphUuid}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category, layout_type: layoutType }),
+    body: JSON.stringify({ category, layout_type: layoutType, layout_overrides: layoutOverrides }),
   });
 }
 
@@ -188,7 +197,7 @@ export type SaveGraphBody = {
   point_size: number | null;
   favorites: number[];
   comments: CommentItem[];
-  
+
   group_name?: string;
   group_password?: string;
 };

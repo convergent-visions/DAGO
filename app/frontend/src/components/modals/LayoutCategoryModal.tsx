@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Orbit, LayoutTemplate, Info, Check } from "lucide-react";
-import type { LayoutType } from "../../graph/api/graphs";
+import type { LayoutType, LayoutOverrides } from "../../graph/api/graphs";
 
 const DEFAULT_CATEGORY_OPTIONS = [
   { key: "cellular_component", label: "Cellular Component" },
   { key: "molecular_function", label: "Molecular Function" },
   { key: "biological_process", label: "Biological Process" },
 ];
+
+const CATEGORY_ORDER = new Map(
+  DEFAULT_CATEGORY_OPTIONS.map(({ key }, index) => [key, index])
+);
 
 function toCategoryLabel(key: string): string {
   return key
@@ -22,8 +26,10 @@ interface LayoutCategoryModalProps {
   fileName?: string;
   categories?: string[];
   currentCategory?: string | null;
+  showTuning?: boolean;
+  initialOverrides?: LayoutOverrides;
   onCancel: () => void;
-  onConfirm: (layoutType: LayoutType, category?: string) => void;
+  onConfirm: (layoutType: LayoutType, category?: string, overrides?: LayoutOverrides) => void;
 }
 
 const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
@@ -34,21 +40,30 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
   currentCategory,
   onCancel,
   onConfirm,
+  showTuning = false,
+  initialOverrides,
 }) => {
   const [layoutType, setLayoutType] = useState<LayoutType>("cpp");
+  const [overrides, setOverrides] = useState<LayoutOverrides>({});
   const [category, setCategory] = useState<string | null>(null);
 
   const categoryOptions =
     categories && categories.length > 0
-      ? categories.map((key) => ({ key, label: toCategoryLabel(key) }))
+      ? [...categories]
+          .sort((a, b) =>
+            (CATEGORY_ORDER.get(a) ?? CATEGORY_ORDER.size) -
+            (CATEGORY_ORDER.get(b) ?? CATEGORY_ORDER.size)
+          )
+          .map((key) => ({ key, label: toCategoryLabel(key) }))
       : DEFAULT_CATEGORY_OPTIONS;
 
   useEffect(() => {
     if (open) {
       setLayoutType("cpp");
       setCategory(currentCategory ?? null);
+      setOverrides(initialOverrides ?? {});
     }
-  }, [open, currentCategory]);
+  }, [open, currentCategory, initialOverrides]);
 
   if (!open) return null;
 
@@ -56,7 +71,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
 
   const handleConfirm = () => {
     if (!canConfirm) return;
-    onConfirm(layoutType, category ?? undefined);
+    onConfirm(layoutType, category ?? undefined, showTuning ? overrides : undefined);
   };
 
   return (
@@ -122,8 +137,8 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
             </h2>
             <p className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
               <Info size={12} className="mt-px text-gray-500 dark:text-gray-500" />
-              Select how the graph should be arranged on the canvas. You can re-load the same
-              file with a different layout later.
+              Select how the graph should be arranged on the canvas. You can change
+              the layout later from the graph's change-view dialog.
             </p>
           </div>
 
@@ -279,7 +294,10 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setCategory(key)}
+                      onClick={() => {
+                        setCategory(key);
+                        setOverrides(key === currentCategory ? initialOverrides ?? {} : {});
+                      }}
                       className={`
                         inline-flex items-center gap-1
                         px-2.5 py-1 rounded-full border
@@ -304,6 +322,47 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
                 })}
               </div>
             </div>
+          )}
+
+          {showTuning && layoutType === "cpp" && (
+            <fieldset className="mb-4 space-y-4 border-t border-black/10 pt-4 dark:border-white/10">
+              <legend className="px-1 text-sm font-semibold">Layout settings</legend>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                100% uses the ontology preset. Changes take effect when you apply them.
+              </p>
+              {([
+                ["box_width_coeff", "Layout width"],
+                ["min_required_distance_between_adjacent_levels", "Minimum level spacing"],
+                ["nested_colour_child_padding", "Subgroup spacing"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="block text-xs">
+                  <span className="mb-2 flex justify-between">
+                    <span>{label}</span>
+                    <output htmlFor={`layout-${key}`}>{Math.round((overrides[key] ?? 1) * 100)}%</output>
+                  </span>
+                  <input
+                    id={`layout-${key}`}
+                    type="range"
+                    min={50}
+                    max={200}
+                    step={5}
+                    value={Math.round((overrides[key] ?? 1) * 100)}
+                    onChange={(event) => setOverrides((previous) => ({
+                      ...previous, [key]: Number(event.target.value) / 100,
+                    }))}
+                    className="w-full accent-blue-600"
+                  />
+                </label>
+              ))}
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Wide graphs may need more level spacing automatically.
+                Subgroup spacing affects nested groups only.
+              </p>
+              <button type="button" onClick={() => setOverrides({})}
+                className="text-xs font-medium text-blue-700 underline dark:text-blue-300">
+                Restore ontology preset
+              </button>
+            </fieldset>
           )}
 
           {/* Footer / actions */}
@@ -338,7 +397,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
                 }
               `}
             >
-              Confirm
+              {showTuning ? "Apply" : "Confirm"}
             </button>
           </div>
         </motion.div>

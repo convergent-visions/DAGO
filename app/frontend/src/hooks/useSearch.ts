@@ -21,65 +21,50 @@ export function useSearch(currentGraphUUID: string | null) {
   const [results, setResults] = React.useState<NodeInfoProps[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
-  const performSearch = React.useCallback(
-    async (filtersToApply: SearchFilter[]) => {
-      if (filtersToApply.length === 0) {
-        setResults([]);
-        setError(null);
-        return;
+  const requestVersion = React.useRef(0);
+
+  const resetSearch = React.useCallback(() => {
+    requestVersion.current += 1;
+    setFilters([]);
+    setResults([]);
+    setError(null);
+  }, []);
+
+  const handleSearch = React.useCallback((field: string, query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    setFilters((previous) => {
+      if (previous.some((filter) => filter.field === field && filter.query === q)) {
+        return previous;
       }
+      return [...previous, { id: createFilterId(), field, query: q }];
+    });
+  }, []);
 
-      try {
-        setResults([]);
-
-        const data = await searchNodes(
-          currentGraphUUID,
-          filtersToApply.map(({ field, query }) => ({ field, query })),
-          searchOptions
-        );
-
-        setError(null);
-        setResults(Array.isArray(data) ? data : [data]);
-      } catch (e: any) {
-        setError(e?.message ?? "Connection error");
-      }
-    },
-    [currentGraphUUID, searchOptions]
-  );
-
-  const handleSearch = React.useCallback(
-    (field: string, query: string) => {
-      const q = query.trim();
-      if (!q) return;
-
-      setFilters((prev) => {
-        const alreadyExists = prev.some((f) => f.field === field && f.query === q);
-        if (alreadyExists) return prev;
-
-        const newFilter: SearchFilter = { id: createFilterId(), field, query: q };
-        const updated = [...prev, newFilter];
-        void performSearch(updated);
-        return updated;
-      });
-    },
-    [performSearch]
-  );
-
-  const handleRemoveFilter = React.useCallback(
-    (id: string) => {
-      setFilters((prev) => {
-        const updated = prev.filter((f) => f.id !== id);
-        void performSearch(updated);
-        return updated;
-      });
-    },
-    [performSearch]
-  );
+  const handleRemoveFilter = React.useCallback((id: string) => {
+    setFilters((previous) => previous.filter((filter) => filter.id !== id));
+  }, []);
 
   React.useEffect(() => {
-    if (filters.length === 0) return;
-    void performSearch(filters);
-  }, [searchOptions, filters, performSearch]);
+    const version = ++requestVersion.current;
+    setResults([]);
+    setError(null);
+    if (!currentGraphUUID || filters.length === 0) return;
+
+    void searchNodes(
+      currentGraphUUID,
+      filters.map(({ field, query }) => ({ field, query })),
+      searchOptions
+    ).then((data) => {
+      if (requestVersion.current !== version) return;
+      setResults(Array.isArray(data) ? data : [data]);
+    }).catch((error: unknown) => {
+      if (requestVersion.current !== version) return;
+      setError(error instanceof Error ? error.message : "Connection error");
+    });
+
+    return () => { requestVersion.current += 1; };
+  }, [currentGraphUUID, filters, searchOptions]);
 
   return {
     filters,
@@ -90,5 +75,6 @@ export function useSearch(currentGraphUUID: string | null) {
     handleSearch,
     handleRemoveFilter,
     setResults,
+    resetSearch,
   };
 }

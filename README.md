@@ -1,114 +1,78 @@
-# Efficient Visualization of Large Directed Acyclic Graphs
+# DAGO — Explore Large Directed Acyclic visually
 
-<!-- <p align="center">
-  <img src="docs/screenshots/hero_light.png" width="800" />
-</p> -->
+DAGO is an interactive application for exploring directed acyclic graphs with focus for Gene Ontology ([GO](https://geneontology.org/docs/ontology-documentation/)). It helps researchers navigate from broad biological concepts to specific terms, inspect relationships, and examine branches of the ontology in a shared graph view.
 
-A web-based application for efficient visualization, analysis, and interactive exploration of large **Directed Acyclic Graphs (DAGs)**.  
-The system is designed to handle graphs with **thousands of nodes and edges**, focusing on **scalability, clarity, and performance** ⚡
+You can search term metadata, inspect individual terms, mark favorites, add comments, and adjust the graph layout. Graphs can be saved to the application's database or exported for later use.
 
----
+[View the application demonstration](docs/gifs/demo.gif).
 
-## 🎬 Demo
+## Start exploring
 
-![](docs/gifs/demo.gif)
+### 1. Choose an ontology file
 
+Download an OBO file from the [official GO downloads page](https://geneontology.org/docs/download-ontology/).
 
-## 📌 Use Cases
+DAGO currently imports **only `is_a` relationships**. Other relationships present in the source file, including `part_of` and regulatory relationships, are excluded from the displayed graph.
 
-- 🔗 Visualization of dependency graphs  
-- 🧩 Analysis of workflow DAGs  
-- 🎓 Research and academic projects   
+### 2. Load a GO aspect
 
----
+Upload the OBO file and select **Biological Process**, **Molecular Function**, or **Cellular Component**.
 
-## ✨ Features
+Choose a layout:
 
-- 📈 Scalable visualization of large DAGs (**10k+ nodes**)
-- 🖱 Interactive graph exploration  
-  - 🔍 zooming and panning  
-  - 🔎 node and edge inspection  
-- 🧠 Backend graph analysis  
-  - hierarchy and level computation  
-  - layout preprocessing  
-- ⚡ High-performance layout computation  
-  - offloaded to a **C++ gRPC service**  
-- 🌐 Modern web frontend  
-  - responsive user interface  
-  - real-time communication with backend  
-- 🗄 MongoDB-based storage  
-  - persistent graph data  
-  - reusable layouts  
+- **Hierarchical** arranges terms by graph level and organizes branches into separate regions.
+- **Radial** arranges the hierarchy around a central root.
 
----
+### 3. Find and inspect terms
 
-## 🏗 Architecture Overview
+Search using the available metadata fields, such as a term name or GO identifier. Select a term to inspect its metadata and explore its connections.
 
-The application follows a **multi-service architecture** optimized for performance and separation of concerns.  
-Graph visualization is handled by a **web frontend**, while heavy layout computations are delegated to a dedicated **C++ service via gRPC**.  
-A **Python backend** coordinates data flow, graph analysis, and communication between components.
+Favorites and comments can help keep track of terms during exploration.
 
----
+### 4. Adjust the view
 
-## 🧰 Tech Stack
+For a loaded graph, open the change-view dialog and select the hierarchical layout to adjust:
 
-### 🎨 Frontend
-- React
-- Vite
-- JavaScript / TypeScript
+| Setting | Effect |
+|---|---|
+| **Layout width** | Changes the horizontal space allocated to groups |
+| **Minimum level spacing** | Sets the minimum vertical distance between levels |
+| **Subgroup spacing** | Changes the horizontal gaps between nested groups |
 
-### 🧠 Backend
-- Python 3
-- Flask
-- gRPC
-- graph-tool
-- MongoDB (PyMongo)
+## Save and share your work
 
-### ⚙️ Layout Engine
-- C++
-- gRPC
+DAGO provides several ways to retain a graph:
 
+- **Save to the application database** to reopen a stored graph.
+- **Export as JSON** to retain graph connections, term metadata, and layout coordinates.
+- **Export as HTML** to create a standalone browser view.
 
----
+The JSON export uses DAGO's graph format. It is not an OBO file or the official GO JSON format, and it does not preserve the complete source ontology.
 
-## ⚙️ Getting Started
+## Run DAGO locally
 
-### 📦 Prerequisites
-- Docker
-- Docker Compose
-
----
-
-### ▶️ Run the application locally
+Install Docker with Docker Compose support, then run:
 
 ```bash
-git clone https://github.com/jgrzes/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs
-cd Efficient-Visualization-of-Large-Directed-Acyclic-Graphs
-docker compose build && docker compose up
+git clone --recurse-submodules https://github.com/convergent-visions/DAGO.git
+cd DAGO
+docker compose up --build
 ```
 
-### 🚀 Deployment
+Once the services are ready, open [DAGO in your browser](http://localhost:30306).
 
-For server or VPN-based deployment, use the production Docker Compose file:
-
-```bash
-cp .env.example .env
-```
-
-Edit .env and set the required environment variables, then start the production deployment:
+For a server deployment, copy `.env.example` to `.env`, configure the deployment values, and use:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 ```
 
-### 🌍 After startup
+## Feedback and contributors
 
-- 🎨 Frontend: http://localhost:30306  
-- 🧠 Python Backend API: http://localhost:30301  
+Report bugs, unclear behavior, or suggestions through [GitHub Issues](https://github.com/convergent-visions/DAGO/issues).
 
+DAGO is developed by:
 
-## 🧑‍💻 Authors
-
-- **[Jakub Grześ](https://github.com/jgrzes)**
-- **[Jan Masternak](https://github.com/janmast1o)**
-- **[Tomasz Smyda](https://github.com/tsmyda)**
+- [Jakub Grześ](https://github.com/jgrzes)
+- [Jan Masternak](https://github.com/janmast1o)
+- [Tomasz Smyda](https://github.com/tsmyda)

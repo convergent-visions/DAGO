@@ -61,6 +61,7 @@ export function useGraph(
   const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
 
   const highlightTokenRef = useRef(0);
+  const selectionRequestRef = useRef(0);
   const searchIndicesRef = useRef<Set<number>>(new Set());
   const hoveredCardIndexRef = useRef<number | null>(null);
   const focusModeRef = useRef<"off" | "on">(focusMode ?? "off");
@@ -315,7 +316,7 @@ export function useGraph(
         maskedLinkOpacity: maskedLinkOpacityRef.current,
         focusPathNodeIndices: focusPathNodeIndicesRef.current,
         focusPathEdgeIndices: focusPathEdgeIndicesRef.current,
-        
+
       });
 
       const hoverIdx = hoverIndexRef.current;
@@ -402,6 +403,7 @@ export function useGraph(
   /* -------------------------------------------------------------------------- */
 
   const clearSelection = useCallback(() => {
+    selectionRequestRef.current += 1;
     setSelectedNode(null);
     selectedIndexRef.current = null;
     highlightedIndicesRef.current = [];
@@ -426,8 +428,10 @@ export function useGraph(
         return;
       }
 
+      const request = ++selectionRequestRef.current;
       try {
         const data = await fetchNodeData(uuid, index);
+        if (request !== selectionRequestRef.current || uuid !== currentGraphUUIDRef.current) return;
 
         setSelectedNode({
           index,
@@ -883,7 +887,20 @@ export function useGraph(
     }
   }, [setFocusedNodeIndices, parentChildrenCacheRef]);
 
+  const resetGraphInteraction = useCallback(() => {
+    clearSelection();
+    clearFocusedNodes();
+    highlightTokenRef.current += 1;
+    searchIndicesRef.current = new Set();
+    hoveredCardIndexRef.current = null;
+    hoverIndexRef.current = null;
+    focusPathNodeIndicesRef.current = new Set();
+    focusPathEdgeIndicesRef.current = new Set();
+    setHoverTooltip(null);
+  }, [clearSelection, clearFocusedNodes]);
+
   return {
+    resetGraphInteraction,
     fitView,
     selectNodeByIndex,
     tooltips,

@@ -8,7 +8,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
       MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-dagmara}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-dago}
     volumes:
       - mongo_data:/data/db
       - ./init.js:/docker-entrypoint-initdb.d/init.js:ro
@@ -49,14 +49,14 @@ services:
       context: ./app
       dockerfile: ./python-backend/Dockerfile
     environment:
-      MONGODB_URI: mongodb://${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}:${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}@mongo:27017/${MONGO_DB_NAME:-dagmara}?authSource=${MONGO_DB_NAME:-dagmara}
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-dagmara}
+      MONGODB_URI: mongodb://${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}:${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}@mongo:27017/${MONGO_DB_NAME:-dago}?authSource=${MONGO_DB_NAME:-dago}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-dago}
       SERVICE_IP_ADDRESS: 0.0.0.0
       SERVICE_PORT: 30301
       LAYOUT_SERVICE_IP_ADDRESS: cpp-backend
       LAYOUT_SERVICE_PORT: 30311
       MAX_CONTENT_LENGTH_MB: ${MAX_CONTENT_LENGTH_MB:-100}
-      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-1200}
     expose:
       - "30301"

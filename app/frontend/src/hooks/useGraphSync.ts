@@ -13,13 +13,14 @@ export function useGraphSync(params: {
   const prevFavsRef = React.useRef<number[] | null>(null);
   const prevCommentsRef = React.useRef<CommentItem[] | null>(null);
 
-  const syncAllCommentsAndFavorites = React.useCallback(async (hash: string) => {
+  const syncAllCommentsAndFavorites = React.useCallback(async (hash: string, signal: AbortSignal) => {
     const payload = {
       favorites: Array.isArray(favorites) ? favorites : [],
       comments: Array.isArray(comments) ? comments : [],
     };
 
-    await updateGraphConfig(hash, payload);
+    await updateGraphConfig(hash, payload, signal);
+    if (signal.aborted) return;
 
     prevFavsRef.current = payload.favorites;
     prevCommentsRef.current = payload.comments;
@@ -33,14 +34,15 @@ export function useGraphSync(params: {
     const items = Array.isArray(comments) ? comments : [];
 
     if (!syncInitialized) {
+      const controller = new AbortController();
       void (async () => {
         try {
-          await syncAllCommentsAndFavorites(currentGraphHash);
+          await syncAllCommentsAndFavorites(currentGraphHash, controller.signal);
         } catch (e) {
-          console.error("Initial full sync failed:", e);
+          if (!controller.signal.aborted) console.error("Initial full sync failed:", e);
         }
       })();
-      return;
+      return () => controller.abort();
     }
 
     const prevFavs = prevFavsRef.current ?? [];
@@ -82,6 +84,8 @@ export function useGraphSync(params: {
         const removed = prevItems.find((c) => !ids.has(c.id));
         if (removed) payload.comment_remove = removed.id;
       }
+    } else if (JSON.stringify(items) !== JSON.stringify(prevItems)) {
+      payload.comments = items;
     }
 
     prevFavsRef.current = favs;
