@@ -1,6 +1,6 @@
 from dataclasses import replace
 
-from .layout_params import LayoutTuningParams
+from .params import LayoutTuningParams
 
 LAYOUT_PRESETS: dict[str, dict[str, float]] = {
     "biological_process": {

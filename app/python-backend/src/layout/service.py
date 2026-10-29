@@ -4,11 +4,9 @@ import graph_tool as gt
 import grpc
 from generate_graph_structure import make_graph_structure
 
-from .layout_computation_backend_comms import (
-    send_layout_computation_request_to_grpc_server,
-)
-from .layout_params_builder import build_layout_params
+from .computation_backend_comms import send_layout_computation_request_to_grpc_server
 from .overrides import apply_layout_overrides
+from .params_builder import build_layout_params
 
 
 def compute_layout(

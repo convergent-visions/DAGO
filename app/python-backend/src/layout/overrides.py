@@ -1,7 +1,7 @@
 import math
 from dataclasses import replace
 
-from .layout_params import LayoutTuningParams
+from .params import LayoutTuningParams
 
 LAYOUT_OVERRIDE_FIELDS = {
     "box_width_coeff",
