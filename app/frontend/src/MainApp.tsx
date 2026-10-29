@@ -245,7 +245,7 @@ export default function MainApp() {
       const hasLayout = await loader.jsonHasLayout(file);
       if (hasLayout) {
         try {
-          await loader.loadJsonGraph(file, "cpp");
+          await loader.loadJsonGraph(file, "hierarchical");
         } catch (e) {
           toast.showError(e instanceof Error ? e.message : "JSON load failed");
         }

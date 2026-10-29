@@ -140,7 +140,7 @@ def flask_make_graph_structure():
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
 
-    layout_type = request.form.get("layout_type", "cpp")
+    layout_type = request.form.get("layout_type", "hierarchical")
     root_namespace = request.form.get("root", None)
 
     logger = get_logger()
@@ -351,7 +351,7 @@ def load_graph_from_json():
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
 
-    layout_type = request.form.get("layout_type", "cpp")
+    layout_type = request.form.get("layout_type", "hierarchical")
     logger = get_logger()
     layout_host, layout_port = get_layout_service_config()
 
@@ -449,8 +449,8 @@ def recompute_layout(graph_uuid: str):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    layout_type = data.get("layout_type", "cpp")
-    if layout_type not in {"cpp", "radial"}:
+    layout_type = data.get("layout_type", "hierarchical")
+    if layout_type not in {"radial", "hierarchical"}:
         return jsonify({"error": "Unsupported layout_type"}), 400
 
     G_gt = graph_data.get("graph")
@@ -531,8 +531,8 @@ def change_category(graph_uuid: str):
     if not category:
         return jsonify({"error": "Missing 'category'"}), 400
 
-    layout_type = data.get("layout_type", "cpp")
-    if layout_type not in {"cpp", "radial"}:
+    layout_type = data.get("layout_type", "hierarchical")
+    if layout_type not in {"radial", "hierarchical"}:
         return jsonify({"error": "Unsupported layout_type"}), 400
 
     full_graph = graph_data.get("full_graph")
