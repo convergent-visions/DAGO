@@ -1,7 +1,7 @@
 import math
 
-from layout_params import GraphColourerParams, LayoutDrawerParams, LayoutTuningParams
-from layout_presets import apply_layout_preset
+from .layout_params import GraphColourerParams, LayoutDrawerParams, LayoutTuningParams
+from .layout_presets import apply_layout_preset
 
 
 def clamp(

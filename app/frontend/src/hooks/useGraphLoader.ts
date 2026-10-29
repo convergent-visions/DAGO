@@ -18,6 +18,7 @@ import {
   exportGraph,
   analyzeGraph,
   type LayoutType,
+  type LayoutOverrides,
   type LoadedGraph,
   type GraphProgressEvent,
   type SaveGraphBody,
@@ -132,6 +133,8 @@ export function useGraphLoader(params: {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [loadLoading, setLoadLoading] = React.useState(false);
 
+  const [layoutOverrides, setLayoutOverrides] = React.useState<LayoutOverrides>({});
+
   const [categories, setCategories] = React.useState<string[] | null>(null);
   const [currentCategory, setCurrentCategory] = React.useState<string | null>(null);
 
@@ -162,6 +165,7 @@ export function useGraphLoader(params: {
     setNodeNames(data.names ? data.names : null);
     setCategories(data.categories ?? null);
     setCurrentCategory(data.current_category ?? null);
+    setLayoutOverrides(data.layout_overrides ?? {});
 
     setGraphConfig((prev) => ({
       ...prev,
@@ -429,14 +433,15 @@ export function useGraphLoader(params: {
   );
 
   const recomputeCurrentLayout = React.useCallback(
-    async (layoutType: LayoutType) => {
+    async (layoutType: LayoutType, overrides?: LayoutOverrides) => {
       if (!currentGraphUUID) {
         throw new Error("No graph loaded, cannot change layout.");
       }
 
       setLoading(true);
       try {
-        const data = await recomputeLayoutApi(currentGraphUUID, layoutType);
+        const data = await recomputeLayoutApi(currentGraphUUID, layoutType, overrides);
+        setLayoutOverrides(data.layout_overrides ?? {});
         setPointPositions(new Float32Array(data.canvas_positions));
         setInitialLayout(new Float32Array(data.canvas_positions));
         setLinks(new Float32Array(data.links));
@@ -454,14 +459,15 @@ export function useGraphLoader(params: {
   );
 
   const changeCurrentCategory = React.useCallback(
-    async (category: string, layoutType: LayoutType) => {
+    async (category: string, layoutType: LayoutType, overrides?: LayoutOverrides) => {
       if (!currentGraphUUID) {
         throw new Error("No graph loaded, cannot change category.");
       }
 
       setLoading(true);
       try {
-        const data = await changeCategoryApi(currentGraphUUID, category, layoutType);
+        const data = await changeCategoryApi(currentGraphUUID, category, layoutType, overrides);
+        setLayoutOverrides(data.layout_overrides ?? {});
         setPointPositions(new Float32Array(data.canvas_positions));
         setInitialLayout(new Float32Array(data.canvas_positions));
         setLinks(new Float32Array(data.links));
@@ -544,6 +550,7 @@ export function useGraphLoader(params: {
 
     categories,
     currentCategory,
+    layoutOverrides,
 
     saveModalHash,
     saveModalError,

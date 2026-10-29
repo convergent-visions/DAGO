@@ -8,7 +8,8 @@ import graph_tool as gt
 import grpc
 import py_to_cpp_backend_pb2
 import py_to_cpp_backend_pb2_grpc
-from layout_params import LayoutTuningParams
+
+from .layout_params import LayoutTuningParams
 
 LayoutPositionsT = List[Tuple[float, float]]
 MAX_CHUNK_LENGTH = 900  # For now

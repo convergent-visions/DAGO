@@ -10,6 +10,7 @@ from graph_utils import (
     filter_graph_by_root,
     load_graph_from_uploaded_file,
 )
+from layout.overrides import validate_layout_overrides
 from layout.service import compute_layout
 from routes.graph_data import (
     build_graph_from_graph_data,
@@ -439,6 +440,15 @@ def recompute_layout(graph_uuid: str):
     except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON body must be an object"}), 400
+    try:
+        layout_overrides = validate_layout_overrides(
+            data.get("layout_overrides", graph_data.get("layout_overrides", {}))
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     layout_type = data.get("layout_type", "cpp")
     if layout_type not in {"cpp", "radial"}:
         return jsonify({"error": "Unsupported layout_type"}), 400
@@ -454,6 +464,7 @@ def recompute_layout(graph_uuid: str):
         layout_port,
         logger,
         category=graph_data.get("current_category"),
+        layout_overrides=layout_overrides,
     )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
@@ -464,6 +475,7 @@ def recompute_layout(graph_uuid: str):
         G_gt=G_gt, canvas_positions=canvas_positions
     )
 
+    graph_data["layout_overrides"] = layout_overrides
     graph_data["layout"] = transformed_canvas_positions
     graph_data["space_size"] = int(space_size * 1.2)
 
@@ -478,6 +490,7 @@ def recompute_layout(graph_uuid: str):
                 "names": names,
                 "space_size": space_size,
                 "fallback_used": fallback_used,
+                "layout_overrides": layout_overrides,
             }
         ),
         200,
@@ -500,6 +513,20 @@ def change_category(graph_uuid: str):
     except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON body must be an object"}), 400
+    try:
+        previous_overrides = (
+            graph_data.get("layout_overrides", {})
+            if data.get("category") == graph_data.get("current_category")
+            else {}
+        )
+        layout_overrides = validate_layout_overrides(
+            data.get("layout_overrides", previous_overrides)
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     category = data.get("category")
     if not category:
         return jsonify({"error": "Missing 'category'"}), 400
@@ -520,7 +547,13 @@ def change_category(graph_uuid: str):
     G_gt = filter_graph_by_root(full_graph, root_vertex)
 
     canvas_positions, fallback_used = compute_layout(
-        G_gt, layout_type, layout_host, layout_port, logger, category=category
+        G_gt,
+        layout_type,
+        layout_host,
+        layout_port,
+        logger,
+        category=category,
+        layout_overrides=layout_overrides,
     )
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
@@ -536,6 +569,7 @@ def change_category(graph_uuid: str):
     graph_data["layout"] = transformed_canvas_positions
     graph_data["space_size"] = int(space_size * 1.2)
     graph_data["current_category"] = category
+    graph_data["layout_overrides"] = layout_overrides
 
     names = extract_vertex_names(G_gt)
 
@@ -549,6 +583,7 @@ def change_category(graph_uuid: str):
                 "space_size": space_size,
                 "fallback_used": fallback_used,
                 "category": category,
+                "layout_overrides": layout_overrides,
             }
         ),
         200,

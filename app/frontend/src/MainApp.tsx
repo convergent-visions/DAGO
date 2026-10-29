@@ -33,7 +33,7 @@ import { useGraph } from "./hooks/useGraph";
 import { useSearch } from "./hooks/useSearch";
 import { useGraphSync } from "./hooks/useGraphSync";
 import { useGraphLoader } from "./hooks/useGraphLoader";
-import type { LayoutType } from "./graph/api/graphs";
+import type { LayoutType, LayoutOverrides } from "./graph/api/graphs";
 
 import AppToastModal from "./components/modals/AppToastModal";
 import { useAppToast } from "./hooks/useAppToast";
@@ -254,12 +254,12 @@ export default function MainApp() {
     toast.showError(`Unhandled file format: .${ext ?? "unknown"}`, "Unsupported file");
   };
 
-  const handleLayoutConfirm = (layoutType: LayoutType, category?: string) => {
+  const handleLayoutConfirm = (layoutType: LayoutType, category?: string, overrides?: LayoutOverrides) => {
     if (layoutModalMode === "recompute") {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
       void loader
-        .recomputeCurrentLayout(layoutType)
+        .recomputeCurrentLayout(layoutType, overrides)
         .then((fallbackUsed) => {
           if (fallbackUsed) {
             toast.showInfo(
@@ -277,8 +277,10 @@ export default function MainApp() {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
       if (!category) return;
-      void loader
-        .changeCurrentCategory(category, layoutType)
+      const updateLayout = category === loader.currentCategory
+        ? loader.recomputeCurrentLayout(layoutType, overrides)
+        : loader.changeCurrentCategory(category, layoutType, overrides);
+      void updateLayout
         .then((fallbackUsed) => {
           if (fallbackUsed) {
             toast.showInfo(
@@ -381,11 +383,11 @@ export default function MainApp() {
       if (parentChildrenCacheRef.current) {
         parentChildrenCacheRef.current.clear();
       }
-      
+
       toast.showInfo("Focus mode on - click nodes to add them and their connections");
     } else {
       toast.showInfo("Focus mode off");
-      clearFocusedNodes(); 
+      clearFocusedNodes();
     }
   };
 
@@ -579,6 +581,8 @@ export default function MainApp() {
 
       <LayoutCategoryModal
         open={showLayoutModal}
+        showTuning={layoutModalMode !== "upload"}
+        initialOverrides={loader.layoutOverrides}
         showCategory={
           layoutModalMode === "change-category" ||
           (layoutModalMode === "upload" && pendingExt === "obo")
@@ -680,8 +684,8 @@ export default function MainApp() {
           setSettingsModalOpen(false);
         }}
       />
-      
-      <AppToastModal 
+
+      <AppToastModal
         state={toast.toast}
         onClose={toast.closeToast}
       />
