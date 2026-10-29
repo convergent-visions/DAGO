@@ -67,6 +67,7 @@ export default function MainApp() {
 
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const analysisRequestRef = useRef(0);
 
   const [graphConfig, setGraphConfig] = useState<GraphConfig>({
     pointSize: DEFAULT_POINT_SIZE,
@@ -98,7 +99,7 @@ export default function MainApp() {
   const comments = useComments();
 
   // Graph engine
-  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip, addToFocusedNodes, removeFromFocusedNodes, clearFocusedNodes } =
+  const { resetGraphInteraction, fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip, addToFocusedNodes, removeFromFocusedNodes, clearFocusedNodes } =
     useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode, focusedNodeIndices, setFocusedNodeIndices, parentChildrenCacheRef, highlightPathToRoot);
 
   // Right sidebar state
@@ -148,8 +149,11 @@ export default function MainApp() {
     currentGraphUUID,
     currentGraphHash,
     onGraphLoaded: () => {
-      clearFocusedNodes();
+      analysisRequestRef.current += 1;
+      resetGraphInteraction();
+      search.resetSearch();
       setFocusMode("off");
+      setAnalysisResult(null);
     },
   });
 
@@ -211,10 +215,13 @@ export default function MainApp() {
   };
 
   const handleAnalyzeClick = async () => {
+    const request = ++analysisRequestRef.current;
     try {
       const result = await loader.handleAnalyze();
+      if (request !== analysisRequestRef.current) return;
       setAnalysisResult(result);
     } catch (e) {
+      if (request !== analysisRequestRef.current) return;
       toast.showError(e instanceof Error ? e.message : "Analyze failed");
     }
   };

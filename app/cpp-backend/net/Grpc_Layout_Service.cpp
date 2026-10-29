@@ -10,21 +10,20 @@
 
 #include "../algorithms/algorithm_params_creation.hpp"
 
-#define DEBUGGING true
 
 namespace net {
 
 auto assignLevelsInGraph = graph_preprocessing::assignLevelsInGraph;
 
 template <typename T>
-using PretendMatrix = data_structures::PretendMatrix<T>; 
+using PretendMatrix = data_structures::PretendMatrix<T>;
 
 grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context, const EdgeList* edgeList, GraphLayout* response) {
-    constexpr uint8_t TargetGraphUUIDLength = 7;   
+    constexpr uint8_t TargetGraphUUIDLength = 7;
     boost::uuids::random_generator graphUUIDGenerator;
     std::string graphUUIDInStrForm = boost::uuids::to_string(graphUUIDGenerator());
     graphUUIDInStrForm = {
-        graphUUIDInStrForm.begin(), 
+        graphUUIDInStrForm.begin(),
         std::next(graphUUIDInStrForm.begin(), TargetGraphUUIDLength)
     };
     logging::log_info(
@@ -32,15 +31,12 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
     );
 
     bool computationSuccessful = false;
-    
+
     std::thread executionThread([
             this, context, edgeList, response, &graphUUIDInStrForm, &computationSuccessful
         ]() -> void {
             std::vector<std::pair<uint32_t, uint32_t>> edgeListInGraphCompatibleForm;
-            #if DEBUGGING
-            #else 
             try {
-            #endif
                 size_t numberOfEdges = edgeList->edges_size();
                 edgeListInGraphCompatibleForm.reserve(numberOfEdges);
 
@@ -59,8 +55,8 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     + std::to_string(numberOfVertices) + " vertices and "
                     + std::to_string(numberOfEdges) + " edges."
                 );
-                
-                Graph graph(numberOfVertices, edgeListInGraphCompatibleForm, true); 
+
+                Graph graph(numberOfVertices, edgeListInGraphCompatibleForm, true);
 
                 logging::log_trace(
                     "Assigning levels in graph with id = " + graphUUIDInStrForm + "..."
@@ -201,15 +197,12 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     + graphUUIDInStrForm + "."
                 );
                 computationSuccessful = true;
-            #if DEBUGGING
-            #else
             } catch (const std::exception& e) {
                 logging::log_error(
                     "An error occured when trying to compute layout for graph with id = "
                     + graphUUIDInStrForm + ": " + e.what()
                 );
             }
-            #endif
     });
     executionThread.join();
 
@@ -219,8 +212,8 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
 
 
 void GrpcLayoutService::fillFileWithColourHierarchy(
-    std::ofstream& outputFileStream, 
-    const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+    std::ofstream& outputFileStream,
+    const GraphColourer::ColourHierarchyNode& colourHierarchyNode,
     uint32_t indent
 ) const {
     std::string indentStr;
@@ -237,13 +230,13 @@ void GrpcLayoutService::fillFileWithColourHierarchy(
 
 
 void GrpcLayoutService::callQAPPythonScript(
-    ColouredGraph& graph, 
+    ColouredGraph& graph,
     GraphColourer::ColourHierarchyNode& colourHierarchyRoot
 ) const {
     boost::uuids::random_generator graphUUIDGenerator;
     boost::uuids::uuid uuid = graphUUIDGenerator();
-    boost::filesystem::path p = 
-        boost::filesystem::temp_directory_path() / 
+    boost::filesystem::path p =
+        boost::filesystem::temp_directory_path() /
         boost::filesystem::unique_path("temp-" + boost::uuids::to_string(uuid));
 
     std::ofstream f(p.string());
@@ -263,7 +256,7 @@ void GrpcLayoutService::callQAPPythonScript(
             auto [j, fij] = it.getIndexAndValuePtr();
             if (*fij != 0) {
                 // std::cout << "F " << i << " " << j << " " << *fij << "\n";
-                f << "F " << i << " " << j << " " << *fij << "\n"; 
+                f << "F " << i << " " << j << " " << *fij << "\n";
             }
         }
     }
@@ -275,14 +268,14 @@ void GrpcLayoutService::callQAPPythonScript(
 
 
 void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
-    ColouredGraph& graph, 
-    GraphColourer::ColourHierarchyNode& colourHierarchyRoot, 
+    ColouredGraph& graph,
+    GraphColourer::ColourHierarchyNode& colourHierarchyRoot,
     const std::string& colourHierarchyAndFMatrixPathFile
 ) const {
 
     // constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/qap_solver.py";
     constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/biq_bin_qap_solver.py";
-    std::string command = "python3 " + std::string(qapPyScriptPath) + " " + colourHierarchyAndFMatrixPathFile; 
+    std::string command = "python3 " + std::string(qapPyScriptPath) + " " + colourHierarchyAndFMatrixPathFile;
 
     std::unique_ptr<FILE, decltype(&pclose)> qapPipe = std::unique_ptr<FILE, decltype(&pclose)>(
         popen(command.c_str(), "r"), pclose
@@ -318,8 +311,8 @@ void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
         std::string previousColourStr = strtok_r(const_cast<char*>(mapping.c_str()), ">", &savePtr);
         previousColour = std::stoi(previousColourStr);
         maxColourIndex = std::max(maxColourIndex, previousColour);
-    }  
-    
+    }
+
     std::vector<GraphColourer::ColourHierarchyNode*> colourHierarchyNodesPtrs(maxColourIndex+1, nullptr);
     fillVectorOfColourHierarchyNodesPtr(colourHierarchyRoot, colourHierarchyNodesPtrs);
 
@@ -369,13 +362,13 @@ void GrpcLayoutService::sortChildrenInColourHierarchyNodeWithRecursion(
 
     if (colourHierarchyNode.childrenPtrs.size() <= 1) return;
     std::sort(
-        colourHierarchyNode.childrenPtrs.begin(), 
-        colourHierarchyNode.childrenPtrs.end(), 
+        colourHierarchyNode.childrenPtrs.begin(),
+        colourHierarchyNode.childrenPtrs.end(),
         [](
-            const std::unique_ptr<GraphColourer::ColourHierarchyNode>& firstChildNodePtr, 
+            const std::unique_ptr<GraphColourer::ColourHierarchyNode>& firstChildNodePtr,
             const std::unique_ptr<GraphColourer::ColourHierarchyNode>& secondChildNodePtr
         ) -> bool {
-            return firstChildNodePtr->colour < secondChildNodePtr->colour;    
+            return firstChildNodePtr->colour < secondChildNodePtr->colour;
         }
     );
 
@@ -412,7 +405,7 @@ void GrpcLayoutService::pushLayoutToFirstQuarterOfCartesianSpace(
 
 
 void GrpcLayoutService::buildColourHierarchyString(
-    const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+    const GraphColourer::ColourHierarchyNode& colourHierarchyNode,
     std::string& colourHierarchyString, uint32_t indent
 ) const {
 
@@ -434,7 +427,5 @@ void GrpcLayoutService::buildColourHierarchyString(
         );
     }
 }
-
-#undef DEBUGGING
 
 }

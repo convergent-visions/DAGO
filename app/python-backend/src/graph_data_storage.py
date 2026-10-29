@@ -5,9 +5,6 @@ from threading import Lock, Thread
 from time import sleep
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
-from venv import logger
-
-import graph_tool as gt
 
 
 class KeepaliveMessageType(Enum):
@@ -77,61 +74,57 @@ class GraphDataStorage:
                     event_type = None
                     try:
                         event_type = KeepaliveMessageType.from_string(event_type_str)
-                    except Exception as e:  # TODO: Decide how to log errors here
+                    except Exception:
                         print(
                             f"Could not convert from: {event_type_str}, which is of type: {type(event_type_str)}"
                         )
 
-                    if graph_uuid in self.graph_cycles_without_keepalive_hashmap:
-                        self.graph_cycles_without_keepalive_hashmap[graph_uuid] = -1
+                    with self.graph_hashmap_mutex:
+                        if graph_uuid in self.graph_cycles_without_keepalive_hashmap:
+                            self.graph_cycles_without_keepalive_hashmap[graph_uuid] = -1
 
-                        # TODO: Decide if mutex locking is neccessary here
-                        if event_type == KeepaliveMessageType.CLOSED:
-                            graphs_to_prune_uuids.append(graph_uuid)
-                        elif event_type == KeepaliveMessageType.HIDDEN:
-                            self.graph_visible[graph_uuid] = False
-                        elif event_type == KeepaliveMessageType.VISIBLE:
-                            self.graph_visible[graph_uuid] = True
-                        print(
-                            f"Graph visible for {graph_uuid}: {self.graph_visible[graph_uuid]}"
-                        )
+                            if event_type == KeepaliveMessageType.CLOSED:
+                                graphs_to_prune_uuids.append(graph_uuid)
+                            elif event_type == KeepaliveMessageType.HIDDEN:
+                                self.graph_visible[graph_uuid] = False
+                            elif event_type == KeepaliveMessageType.VISIBLE:
+                                self.graph_visible[graph_uuid] = True
 
-                self.graph_hashmap_mutex.acquire()
-                for graph_uuid in self.graph_cycles_without_keepalive_hashmap:
-                    if not self.graph_visible[graph_uuid]:
-                        self.graph_cycles_without_keepalive_hashmap[graph_uuid] = 0
-                    else:
-                        self.graph_cycles_without_keepalive_hashmap[graph_uuid] += 1
-                self.graph_hashmap_mutex.release()
+                            print(
+                                f"Graph visible for {graph_uuid}: {self.graph_visible[graph_uuid]}"
+                            )
 
-                self.graph_hashmap_mutex.acquire()
+                with self.graph_hashmap_mutex:
+                    for graph_uuid in self.graph_cycles_without_keepalive_hashmap:
+                        if not self.graph_visible[graph_uuid]:
+                            self.graph_cycles_without_keepalive_hashmap[graph_uuid] = 0
+                        else:
+                            self.graph_cycles_without_keepalive_hashmap[graph_uuid] += 1
+
                 for graph_uuid in graphs_to_prune_uuids:
-                    if graph_uuid not in self.graph_hashmap:
-                        continue
-                    self.graph_hashmap.pop(graph_uuid)
-                    self.graph_cycles_without_keepalive_hashmap.pop(graph_uuid)
-                    self.graph_visible.pop(graph_uuid)
-                self.graph_hashmap_mutex.release()
+                    self.delete_graph_data_for_id(graph_uuid)
 
-                current_graph_uuids = [
-                    uuid for uuid in self.graph_cycles_without_keepalive_hashmap.keys()
-                ]
-                self.graph_hashmap_mutex.acquire()
-                for graph_uuid in current_graph_uuids:
-                    if (
-                        self.graph_cycles_without_keepalive_hashmap[graph_uuid]
-                        > self.max_num_of_cycles_without_keepalive
-                    ) and self.graph_visible[graph_uuid]:
-                        self.graph_hashmap.pop(graph_uuid)
-                        self.graph_cycles_without_keepalive_hashmap.pop(graph_uuid)
-                        self.graph_visible.pop(graph_uuid)
-                self.graph_hashmap_mutex.release()
+                with self.graph_hashmap_mutex:
+                    current_graph_uuids = list(
+                        self.graph_cycles_without_keepalive_hashmap.keys()
+                    )
+                    for graph_uuid in current_graph_uuids:
+                        if (
+                            self.graph_cycles_without_keepalive_hashmap[graph_uuid]
+                            > self.max_num_of_cycles_without_keepalive
+                        ) and self.graph_visible[graph_uuid]:
+                            self.graph_hashmap.pop(graph_uuid)
+                            self.graph_cycles_without_keepalive_hashmap.pop(graph_uuid)
+                            self.graph_visible.pop(graph_uuid)
 
-                # TODO: Decide if, and if so how many, active uuids should be displated here.
-                # TODO: Logger does not work here for whatever reason, maybe because __name__ != __main__
-                print(
-                    f"Active graph uuids: {[uuid for uuid in self.graph_cycles_without_keepalive_hashmap.keys()]}"
-                )
+                with self.graph_hashmap_mutex:
+                    active_graph_uuids = list(
+                        self.graph_cycles_without_keepalive_hashmap
+                    )
+
+                if self.logger:
+                    self.logger.debug("Active graph UUIDs: %s", active_graph_uuids)
+
                 sleep(self.keepalive_message_processor_sleep_time_s)
             else:
                 print(f"Graph data storage running: {self.data_storage_running}")
@@ -141,26 +134,24 @@ class GraphDataStorage:
 
     def register_new_graph_data(self, graph_data: Dict[str, Any]):
         new_uuid = str(uuid4())
-        self.graph_hashmap_mutex.acquire()
-        self.graph_hashmap[new_uuid] = graph_data
-        self.graph_cycles_without_keepalive_hashmap[new_uuid] = 0
-        self.graph_visible[new_uuid] = True
-        self.graph_hashmap_mutex.release()
+        with self.graph_hashmap_mutex:
+            self.graph_hashmap[new_uuid] = graph_data
+            self.graph_cycles_without_keepalive_hashmap[new_uuid] = 0
+            self.graph_visible[new_uuid] = True
+
         return new_uuid
 
     def get_graph_data_for_id(self, uuid: str) -> Dict[str, Any]:
-        self.graph_hashmap_mutex.acquire()
-        if uuid not in self.graph_hashmap:
-            raise RuntimeError(f"No graph data under uuid {uuid}")
-        graph_data = self.graph_hashmap[uuid]
-        self.graph_hashmap_mutex.release()
-        return graph_data
+        with self.graph_hashmap_mutex:
+            if uuid not in self.graph_hashmap:
+                raise RuntimeError(f"No graph data under uuid {uuid}")
+            return self.graph_hashmap[uuid]
 
     def delete_graph_data_for_id(self, uuid: str):
-        if uuid not in self.graph_hashmap:
-            return
-        self.graph_hashmap_mutex.acquire()
-        self.graph_hashmap.pop(uuid)
-        self.graph_cycles_without_keepalive_hashmap.pop(uuid)
-        self.graph_visible.pop(uuid)
-        self.graph_hashmap_mutex.release()
+        with self.graph_hashmap_mutex:
+            if uuid not in self.graph_hashmap:
+                return
+
+            self.graph_hashmap.pop(uuid)
+            self.graph_cycles_without_keepalive_hashmap.pop(uuid, None)
+            self.graph_visible.pop(uuid, None)

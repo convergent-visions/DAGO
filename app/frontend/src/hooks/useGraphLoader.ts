@@ -144,11 +144,12 @@ export function useGraphLoader(params: {
     window.history.replaceState(null, "", url.toString());
   };
 
-  const clearHashInUrl = () => {
+  const clearHashInUrl = React.useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete("g");
+    url.hash = "";
     window.history.replaceState(null, "", url.toString());
-  };
+  }, []);
 
   function applyLoadedGraph(
     data: LoadedGraph,
@@ -467,6 +468,15 @@ export function useGraphLoader(params: {
       setLoading(true);
       try {
         const data = await changeCategoryApi(currentGraphUUID, category, layoutType, overrides);
+
+        // The new ontology has different node indices.
+        setCurrentGraphHash(null);
+        clearHashInUrl();
+        markSyncInitialized(false);
+        setPrevFromLoaded([], []);
+        clearFavorites();
+        setCommentsFromGraph([]);
+
         setLayoutOverrides(data.layout_overrides ?? {});
         setPointPositions(new Float32Array(data.canvas_positions));
         setInitialLayout(new Float32Array(data.canvas_positions));
@@ -474,6 +484,7 @@ export function useGraphLoader(params: {
         setSelectedNode(null);
         if (Array.isArray(data.names)) setNodeNames(data.names);
         setCurrentCategory(data.category);
+        onGraphLoaded?.();
         setTimeout(() => fitView(), 100);
         return Boolean(data.fallback_used);
       } catch (e) {
@@ -482,7 +493,7 @@ export function useGraphLoader(params: {
         setLoading(false);
       }
     },
-    [currentGraphUUID, fitView, setInitialLayout, setLinks, setNodeNames, setPointPositions, setSelectedNode]
+    [currentGraphUUID, fitView, setInitialLayout, setLinks, setNodeNames, setPointPositions, setSelectedNode, setCurrentGraphHash, clearHashInUrl, markSyncInitialized, setPrevFromLoaded, clearFavorites, setCommentsFromGraph, onGraphLoaded]
   );
 
   // export / analyze
