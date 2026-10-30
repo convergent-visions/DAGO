@@ -159,6 +159,13 @@ export default function MainApp() {
 
   const toast = useAppToast();
 
+  React.useEffect(() => {
+    if (graphSync.syncError) {
+      toast.showError("Annotations could not be saved. DAGO will retry automatically.");
+    }
+  }, [graphSync.syncError]);
+
+
   // --- handlers ---
   const handleResetView = () => setPointPositions(new Float32Array(initialLayout));
 

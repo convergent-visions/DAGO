@@ -8,107 +8,61 @@ export function useGraphSync(params: {
   comments: CommentItem[];
 }) {
   const { currentGraphHash, favorites, comments } = params;
-
   const [syncInitialized, setSyncInitialized] = React.useState(false);
-  const prevFavsRef = React.useRef<number[] | null>(null);
-  const prevCommentsRef = React.useRef<CommentItem[] | null>(null);
-
-  const syncAllCommentsAndFavorites = React.useCallback(async (hash: string, signal: AbortSignal) => {
-    const payload = {
-      favorites: Array.isArray(favorites) ? favorites : [],
-      comments: Array.isArray(comments) ? comments : [],
-    };
-
-    await updateGraphConfig(hash, payload, signal);
-    if (signal.aborted) return;
-
-    prevFavsRef.current = payload.favorites;
-    prevCommentsRef.current = payload.comments;
-    setSyncInitialized(true);
-  }, [favorites, comments]);
+  const [syncError, setSyncError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
+  const confirmedState = React.useRef<string | null>(null);
+  const requestVersion = React.useRef(0);
+  // Serialize writes, including across graph switches. Aborting a request does
+  // not guarantee that the server stopped processing it.
+  const writeQueue = React.useRef<Promise<void>>(Promise.resolve());
 
   React.useEffect(() => {
-    if (!currentGraphHash) return;
-
-    const favs = Array.isArray(favorites) ? favorites : [];
-    const items = Array.isArray(comments) ? comments : [];
-
-    if (!syncInitialized) {
-      const controller = new AbortController();
-      void (async () => {
-        try {
-          await syncAllCommentsAndFavorites(currentGraphHash, controller.signal);
-        } catch (e) {
-          if (!controller.signal.aborted) console.error("Initial full sync failed:", e);
-        }
-      })();
-      return () => controller.abort();
+    const version = ++requestVersion.current;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {
+      requestVersion.current += 1;
+      clearTimeout(retryTimer);
+    };
+    if (!currentGraphHash) {
+      setSyncError(null);
+      return cleanup;
     }
 
-    const prevFavs = prevFavsRef.current ?? [];
-    const prevItems = prevCommentsRef.current ?? [];
+    const payload = { favorites, comments };
+    const snapshot = JSON.stringify(payload);
+    if (syncInitialized && snapshot === confirmedState.current) {
+      setSyncError(null);
+      return cleanup;
+    }
 
-    const payload: any = {};
-
-    // delta favorites
-    if (favs.length !== prevFavs.length) {
-      const favSet = new Set(favs);
-      const prevSet = new Set(prevFavs);
-
-      if (favs.length > prevFavs.length) {
-        for (const idx of favSet) {
-          if (!prevSet.has(idx)) {
-            payload.favorite_add = idx;
-            break;
-          }
-        }
-      } else {
-        for (const idx of prevSet) {
-          if (!favSet.has(idx)) {
-            payload.favorite_remove = idx;
-            break;
-          }
-        }
+    writeQueue.current = writeQueue.current.then(async () => {
+      if (version !== requestVersion.current) return;
+      try {
+        await updateGraphConfig(currentGraphHash, payload);
+        if (version !== requestVersion.current) return;
+        confirmedState.current = snapshot;
+        setSyncInitialized(true);
+        setSyncError(null);
+      } catch (error) {
+        if (version !== requestVersion.current) return;
+        setSyncError(error instanceof Error ? error.message : "Could not save annotations");
+        retryTimer = setTimeout(() => setRetryCount((count) => count + 1), 3000);
       }
-    }
-
-    // delta comments
-    if (items.length !== prevItems.length) {
-      const prevIds = new Set(prevItems.map((c) => c.id));
-      const ids = new Set(items.map((c) => c.id));
-
-      if (items.length > prevItems.length) {
-        const added = items.find((c) => !prevIds.has(c.id));
-        if (added) payload.comment_add = added;
-      } else {
-        const removed = prevItems.find((c) => !ids.has(c.id));
-        if (removed) payload.comment_remove = removed.id;
-      }
-    } else if (JSON.stringify(items) !== JSON.stringify(prevItems)) {
-      payload.comments = items;
-    }
-
-    prevFavsRef.current = favs;
-    prevCommentsRef.current = items;
-
-    if (Object.keys(payload).length === 0) return;
-
-    const controller = new AbortController();
-    updateGraphConfig(currentGraphHash, payload, controller.signal).catch((err) => {
-      console.error("Failed to auto-update graph config:", err);
     });
+    return cleanup;
+  }, [currentGraphHash, favorites, comments, syncInitialized, retryCount]);
 
-    return () => controller.abort();
-  }, [favorites, comments, currentGraphHash, syncInitialized, syncAllCommentsAndFavorites]);
-
-  const markSyncInitialized = React.useCallback((v: boolean) => {
-    setSyncInitialized(v);
+  const markSyncInitialized = React.useCallback((value: boolean) => {
+    requestVersion.current += 1;
+    if (!value) confirmedState.current = null;
+    setSyncInitialized(value);
   }, []);
 
   const setPrevFromLoaded = React.useCallback((favs: number[], items: CommentItem[]) => {
-    prevFavsRef.current = favs;
-    prevCommentsRef.current = items;
+    requestVersion.current += 1;
+    confirmedState.current = JSON.stringify({ favorites: favs, comments: items });
   }, []);
 
-  return { syncInitialized, markSyncInitialized, setPrevFromLoaded };
+  return { syncInitialized, syncError, markSyncInitialized, setPrevFromLoaded };
 }
