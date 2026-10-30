@@ -340,7 +340,7 @@ export default function MainApp() {
       .then((radialFallback) => {
         if (radialFallback) {
           toast.showInfo(
-            "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+            "The hierarchical layout could not be computed, so the graph was loaded using a radial layout.",
             "Radial layout used"
           );
         }

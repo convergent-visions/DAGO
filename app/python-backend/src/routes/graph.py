@@ -196,7 +196,7 @@ def flask_make_graph_structure():
         if fallback_used:
             yield _progress_event(
                 "layout_fallback",
-                "Radial layout computed because the C++ layout service was unavailable.",
+                "Radial layout computed because the hierarchical layout could not be computed.",
             )
 
         yield _progress_event("normalizing", "Normalizing graph positions...")

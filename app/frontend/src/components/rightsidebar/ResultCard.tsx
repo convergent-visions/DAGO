@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Star, MessageCirclePlus } from "lucide-react";
 import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import { useFavorites } from "../../hooks/useFavorites";
@@ -16,6 +16,15 @@ const ResultCard: React.FC<ResultCardProps> = ({
   onSelect,
   onHoverResultCard,
 }) => {
+  const hoveredRef = useRef(false);
+  const hoverCallbackRef = useRef(onHoverResultCard);
+  hoverCallbackRef.current = onHoverResultCard;
+
+  useEffect(() => () => {
+    // Removing a favorite can unmount its card without a mouseleave event.
+    if (hoveredRef.current) hoverCallbackRef.current?.();
+  }, []);
+
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addComment } = useComments();
 
@@ -44,8 +53,14 @@ const ResultCard: React.FC<ResultCardProps> = ({
     <>
       <li
         onClick={() => onSelect(node)}
-        onMouseEnter={() => onHoverResultCard?.(node)}
-        onMouseLeave={() => onHoverResultCard?.()}
+        onMouseEnter={() => {
+          hoveredRef.current = true;
+          onHoverResultCard?.(node);
+        }}
+        onMouseLeave={() => {
+          hoveredRef.current = false;
+          onHoverResultCard?.();
+        }}
         className="
           group rounded-xl p-3 border transition cursor-pointer
           shadow-sm hover:shadow-md w-[17em] max-w-full

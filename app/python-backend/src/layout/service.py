@@ -20,6 +20,9 @@ def compute_layout(
     layout_overrides: dict[str, float] | None = None,
 ) -> tuple[list[tuple], bool]:
     """Select the layout algorithm, resolve its parameters and handle fallback."""
+    if graph.num_vertices() == 0:
+        return [], False
+
     if layout_type == "radial":
         logger.debug("Using radial layout computation")
         return make_graph_structure(graph), False
@@ -32,9 +35,11 @@ def compute_layout(
         positions = send_layout_computation_request_to_grpc_server(
             graph, host, port, logger, layout_params=params
         )
+        if len(positions) != graph.num_vertices():
+            raise ValueError("Layout service returned an incomplete layout")
         return positions, False
 
-    except grpc.RpcError as e:
+    except (grpc.RpcError, ValueError) as e:
         logger.warning(
             f"GRPC server failed to conclude layout computation: {e}. "
             "Falling back to radial layout."

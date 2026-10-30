@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Optional, Tuple
 
 import graph_tool as gt
@@ -65,11 +66,15 @@ def send_layout_computation_request_to_grpc_server(
             )
 
     edge_list = py_to_cpp_backend_pb2.EdgeList(
-        edges=edges, layout_params=layout_params_to_proto(layout_params)
+        edges=edges,
+        layout_params=layout_params_to_proto(layout_params),
+        num_vertices=G_gt.num_vertices(),
     )
     with grpc.insecure_channel(f"{server_ip_addr}:{server_port}") as channel:
         stub = py_to_cpp_backend_pb2_grpc.GraphLayoutServiceStub(channel)
-        response = stub.computeGraphLayout(edge_list)
+        worker_timeout = float(os.getenv("GUNICORN_TIMEOUT", "1200"))
+        timeout = min(300.0, worker_timeout / 2) if worker_timeout > 0 else 300.0
+        response = stub.computeGraphLayout(edge_list, timeout=timeout)
 
     if logger is not None:
         logger.debug(

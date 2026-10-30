@@ -39,6 +39,7 @@ class GraphDataStorage:
         keepalive_message_processor_sleep_time_s: int = DEFAULT_KEEPALIVE_MESSAGE_PROCESSOR_SLEEP_TIME_S,
         max_num_of_cycles_without_keepalive: int = DEFAULT_MAX_NUM_OF_CYCLES_WITHOUT_KEEPALIVE,
         logger: Optional[Logger] = None,
+        hidden_session_timeout_s: float = 86400,
     ):
         self.data_storage_running = True
         self.max_capacity = max_capacity
@@ -46,7 +47,7 @@ class GraphDataStorage:
 
         self.graph_cycles_without_keepalive_hashmap: Dict[str, int] = {}
         self.graph_visible: Dict[str, bool] = {}
-        # self.graph_last_keepalive_date: Dict[str, ]
+        self.hidden_session_timeout_s = hidden_session_timeout_s
 
         self.keepalive_message_queue: Queue = Queue()
         self.graph_hashmap_mutex: Lock = Lock()
@@ -99,14 +100,7 @@ class GraphDataStorage:
                 with self.graph_hashmap_mutex:
                     if not self.active_requests:
                         for graph_uuid in self.graph_cycles_without_keepalive_hashmap:
-                            if not self.graph_visible[graph_uuid]:
-                                self.graph_cycles_without_keepalive_hashmap[
-                                    graph_uuid
-                                ] = 0
-                            else:
-                                self.graph_cycles_without_keepalive_hashmap[
-                                    graph_uuid
-                                ] += 1
+                            self.graph_cycles_without_keepalive_hashmap[graph_uuid] += 1
                 for graph_uuid in graphs_to_prune_uuids:
                     self.delete_graph_data_for_id(graph_uuid)
 
@@ -116,10 +110,16 @@ class GraphDataStorage:
                             self.graph_cycles_without_keepalive_hashmap.keys()
                         )
                         for graph_uuid in current_graph_uuids:
+                            max_cycles = (
+                                self.max_num_of_cycles_without_keepalive
+                                if self.graph_visible[graph_uuid]
+                                else self.hidden_session_timeout_s
+                                / self.keepalive_message_processor_sleep_time_s
+                            )
                             if (
                                 self.graph_cycles_without_keepalive_hashmap[graph_uuid]
-                                > self.max_num_of_cycles_without_keepalive
-                            ) and self.graph_visible[graph_uuid]:
+                                > max_cycles
+                            ):
                                 self.graph_hashmap.pop(graph_uuid)
                                 self.graph_cycles_without_keepalive_hashmap.pop(
                                     graph_uuid

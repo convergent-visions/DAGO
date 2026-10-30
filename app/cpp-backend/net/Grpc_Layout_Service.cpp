@@ -40,7 +40,7 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                 size_t numberOfEdges = edgeList->edges_size();
                 edgeListInGraphCompatibleForm.reserve(numberOfEdges);
 
-                uint32_t numberOfVertices = 0;
+                uint32_t numberOfVertices = edgeList->num_vertices();
                 for (size_t i=0; i<numberOfEdges; ++i) {
                     const Edge& edgeI = edgeList->edges(i);
                     uint32_t u = edgeI.srcvertexindex();
