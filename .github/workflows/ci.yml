@@ -84,7 +84,7 @@ jobs:
         run: |
           curl -sS --fail \
             -F "file=@app/python-backend/data/go-mouse.obo" \
-            -F "layout_type=cpp" \
+            -F "layout_type=hierarchical" \
             http://localhost:30301/flask_make_graph_structure \
             > /tmp/cpp-layout.ndjson
 

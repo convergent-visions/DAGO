@@ -273,8 +273,35 @@ def save_graph_to_db(graph_uuid: str):
     G_gt = graph_data["graph"]
 
     data = request.get_json(force=True)
-    if not data or "canvas_positions" not in data or "links" not in data:
+    if (
+        not isinstance(data, dict)
+        or "canvas_positions" not in data
+        or "links" not in data
+    ):
         return jsonify({"error": "Canvas positions and links are required"}), 400
+
+    # Omitted annotations remain unchanged; explicit empty lists clear them.
+    for field in ("favorites", "comments"):
+        if field in data and not isinstance(data[field], list):
+            return jsonify({"error": f"{field} must be a list"}), 400
+
+    def valid_node_index(value):
+        return (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and 0 <= value < G_gt.num_vertices()
+        )
+
+    if "favorites" in data and not all(
+        valid_node_index(index) for index in data["favorites"]
+    ):
+        return jsonify({"error": "favorites must contain valid node indices"}), 400
+
+    if "comments" in data and not all(
+        isinstance(comment, dict) and valid_node_index(comment.get("nodeIndex"))
+        for comment in data["comments"]
+    ):
+        return jsonify({"error": "comments must contain valid node references"}), 400
 
     graph_hash = data.get("graph_hash", "")
 
@@ -293,7 +320,13 @@ def save_graph_to_db(graph_uuid: str):
     layout = linearized_layout_to_pairs(linearized_layout)
     vertices_metadata = build_vertex_metadata_for_graph(G_gt)
 
-    additional_config_keys = ["point_size", "space_size", "group_name"]
+    additional_config_keys = [
+        "point_size",
+        "space_size",
+        "group_name",
+        "favorites",
+        "comments",
+    ]
     additional_config = {
         key: data.get(key) for key in additional_config_keys if key in data
     }

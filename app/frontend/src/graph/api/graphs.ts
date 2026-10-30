@@ -1,7 +1,7 @@
 import { API_BASE, fetchJson } from "./base";
 import type { CommentItem } from "../../hooks/useComments";
 
-export type LayoutType = "cpp" | "radial";
+export type LayoutType = "hierarchical" | "radial";
 
 export type LayoutOverrides = {
   box_width_coeff?: number;
