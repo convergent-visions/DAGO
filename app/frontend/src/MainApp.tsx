@@ -57,7 +57,6 @@ export default function MainApp() {
 
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Graph state
@@ -159,6 +158,13 @@ export default function MainApp() {
 
   const toast = useAppToast();
 
+  React.useEffect(() => {
+    if (graphSync.syncError) {
+      toast.showError("Annotations could not be saved. DAGO will retry automatically.");
+    }
+  }, [graphSync.syncError]);
+
+
   // --- handlers ---
   const handleResetView = () => setPointPositions(new Float32Array(initialLayout));
 
@@ -245,7 +251,7 @@ export default function MainApp() {
       const hasLayout = await loader.jsonHasLayout(file);
       if (hasLayout) {
         try {
-          await loader.loadJsonGraph(file, "cpp");
+          await loader.loadJsonGraph(file, "hierarchical");
         } catch (e) {
           toast.showError(e instanceof Error ? e.message : "JSON load failed");
         }
@@ -334,7 +340,7 @@ export default function MainApp() {
       .then((radialFallback) => {
         if (radialFallback) {
           toast.showInfo(
-            "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+            "The hierarchical layout could not be computed, so the graph was loaded using a radial layout.",
             "Radial layout used"
           );
         }
@@ -420,9 +426,7 @@ export default function MainApp() {
 
   return (
     <div id="layout" className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200">
-      <div ref={canvasRef} className="grow" />
-
-      <div ref={graphRef} id="graph" className="relative grow">
+      <div ref={graphRef} id="graph" className="relative min-h-0 flex-1">
 
         {!currentGraphUUID && !loader.loading && (
           <WelcomeScreen onLoadClick={handleLoadClick} />

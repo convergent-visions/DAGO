@@ -12,12 +12,14 @@ repos:
     rev: 5.12.0
     hooks:
       - id: isort
+        exclude: ^research_scipts/legacy-layout-prototype/
         args: ["--profile", "black"]
 
   - repo: https://github.com/psf/black
     rev: 23.9.1
     hooks:
       - id: black
+        exclude: ^research_scipts/legacy-layout-prototype/
         args: ["--line-length=88"]
         language_version: python3
 
@@ -25,6 +27,7 @@ repos:
     rev: 6.1.0
     hooks:
       - id: flake8
+        exclude: ^research_scipts/legacy-layout-prototype/
         args: ["--max-line-length=115"]
         additional_dependencies:
           - flake8-bugbear

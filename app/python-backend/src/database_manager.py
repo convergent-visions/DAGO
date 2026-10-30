@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pymongo
 from bson.objectid import ObjectId
-from graph_utils import convert_to_json_parsable_representation as convert_to_jp
 from utils import VertexMetadataT
 
 """
@@ -96,27 +95,29 @@ class MongoDatabaseManager:
         if isinstance(graph_id, str):
             graph_id = self._convert_to_object_id(graph_id)
 
-        self.logger.info(f"Overriding graph entry for graph_id={graph_id}")
+        self.logger.info(f"Updating graph entry for graph_id={graph_id}")
         n = len(E_adj_list)
-        self.db[self.GRAPH_DATA_COLLECTION].replace_one(
+        self.db[self.GRAPH_DATA_COLLECTION].update_one(
             {"_id": graph_id},
             {
-                "name": name,
-                "num_of_vertices": n,
-                "last_entry_update": datetime.datetime.utcnow(),
-                "vertices": [
-                    (
-                        {
-                            "index": i,
-                            "N": np.array(E_adj_list[i]).astype(int).tolist(),
-                            "pos": list(layout[i]),
-                        }
-                        | vertices_metadata[i]
-                    )
-                    for i in range(0, n)
-                ],
-            }
-            | (additional_config if additional_config is not None else {}),
+                "$set": {
+                    "name": name,
+                    "num_of_vertices": n,
+                    "last_entry_update": datetime.datetime.utcnow(),
+                    "vertices": [
+                        (
+                            {
+                                "index": i,
+                                "N": np.array(E_adj_list[i]).astype(int).tolist(),
+                                "pos": list(layout[i]),
+                            }
+                            | vertices_metadata[i]
+                        )
+                        for i in range(0, n)
+                    ],
+                }
+                | (additional_config if additional_config is not None else {})
+            },
         )
 
     def delete_entry(self, graph_id: Union[ObjectId, str]) -> None:
@@ -296,5 +297,5 @@ class MongoDatabaseManager:
         try:
             converted_graph_id = ObjectId(graph_id)
             return converted_graph_id
-        except Exception as e:
+        except Exception:
             return ObjectId("0" * 24)

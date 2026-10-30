@@ -40,7 +40,7 @@ def convert_to_json_parsable_representation(gt_value: Any) -> Any:
     elif isinstance(gt_value, (np.floating,)):
         return float(gt_value)
     elif isinstance(gt_value, str):
-        return gt_value.replace("'", "").replace('"', "")
+        return gt_value
     else:
         return gt_value
 
@@ -103,7 +103,9 @@ def build_gt_graph_from_obo(
         tmp.flush()
         godag = GODag(tmp.name)  # useful for clustering and other analyses
 
-    G_gt, roots = convert_obo_to_gt_grah(obonet.read_obo(obo_file_wrapper), allowed_relations=["is_a"])  # we can consider other relations in the future if needed
+    G_gt, roots = convert_obo_to_gt_grah(
+        obonet.read_obo(obo_file_wrapper), allowed_relations=["is_a"]
+    )
 
     return G_gt, roots, godag
 
@@ -181,22 +183,13 @@ def build_gt_graph_from_graph_dict(graph_data: Dict[str, Any]) -> gt.Graph:
             vertex_metadata_keys.add(field)
 
     for p in vertex_metadata_keys:
-        G_gt.vertex_properties[p] = G_gt.new_vertex_property(
-            read_type_in_gt_compatible_way(p)
-        )
+        G_gt.vertex_properties[p] = G_gt.new_vertex_property("object")
 
     for i, vertex_data_entry in enumerate(vertices_data):
         for p in vertex_metadata_keys:
-            if p not in vertex_data_entry:
-                G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD
-            else:
-                val = vertex_data_entry[p]
-                if isinstance(
-                    val, (list, dict, tuple)
-                ):  # if it's complex, store as JSON string
-                    G_gt.vertex_properties[p][i] = json.dumps(val)
-                else:
-                    G_gt.vertex_properties[p][i] = str(val)
+            G_gt.vertex_properties[p][i] = vertex_data_entry.get(
+                p, EMPTY_PROPERTY_FIELD
+            )
 
     return G_gt
 
@@ -209,7 +202,9 @@ def build_graph_from_json_contents(raw_contents: str) -> gt.Graph:
 
 def load_graph_from_uploaded_file(
     file,
-) -> Tuple[gt.Graph, Optional[str], Any, Optional[gt.Graph], Optional[Dict[str, tuple]]]:
+) -> Tuple[
+    gt.Graph, Optional[str], Any, Optional[gt.Graph], Optional[Dict[str, tuple]]
+]:
     """
     Accepts a file from the request, builds a graph-tool Graph based on the extension,
     and returns: (G_gt, root_id, godag, full_graph, roots).
@@ -232,8 +227,11 @@ def load_graph_from_uploaded_file(
         root_namespace = request.form.get("root", None)
         if root_namespace is not None:
             root_id, root_vertex = roots.get(root_namespace, (None, None))
-            if root_vertex is not None:
-                G_gt = filter_graph_by_root(G_gt_full, root_vertex)
+            if root_vertex is None:
+                raise ValueError(
+                    f"The file does not contain ontology {root_namespace!r}"
+                )
+            G_gt = filter_graph_by_root(G_gt_full, root_vertex)
 
         return G_gt, root_id, godag, G_gt_full, roots
 

@@ -43,7 +43,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
   showTuning = false,
   initialOverrides,
 }) => {
-  const [layoutType, setLayoutType] = useState<LayoutType>("cpp");
+  const [layoutType, setLayoutType] = useState<LayoutType>("hierarchical");
   const [overrides, setOverrides] = useState<LayoutOverrides>({});
   const [category, setCategory] = useState<string | null>(null);
 
@@ -59,7 +59,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      setLayoutType("cpp");
+      setLayoutType("hierarchical");
       setCategory(currentCategory ?? null);
       setOverrides(initialOverrides ?? {});
     }
@@ -144,16 +144,16 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
 
           {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-xs">
-            {/* C++ layout card */}
+            {/* Hierarchical layout card */}
             <button
               type="button"
-              onClick={() => setLayoutType("cpp")}
+              onClick={() => setLayoutType("hierarchical")}
               className={`
                 group relative w-full text-left rounded-xl border px-3.5 py-3
                 flex flex-col gap-2
                 transition
                 ${
-                  layoutType === "cpp"
+                  layoutType === "hierarchical"
                     ? `
                       border-blue-600/50 bg-blue-600/10
                       shadow-[0_0_0_1px_rgba(37,99,235,0.20)]
@@ -191,7 +191,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
                   className={`
                     text-[10px] px-2 py-0.5 rounded-full border
                     ${
-                      layoutType === "cpp"
+                      layoutType === "hierarchical"
                         ? `
                           border-blue-600/35 bg-blue-600/10 text-blue-800
                           dark:border-blue-400/80 dark:bg-blue-500/20 dark:text-blue-100
@@ -324,7 +324,7 @@ const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
             </div>
           )}
 
-          {showTuning && layoutType === "cpp" && (
+          {showTuning && layoutType === "hierarchical" && (
             <fieldset className="mb-4 space-y-4 border-t border-black/10 pt-4 dark:border-white/10">
               <legend className="px-1 text-sm font-semibold">Layout settings</legend>
               <p className="text-xs text-gray-600 dark:text-gray-400">

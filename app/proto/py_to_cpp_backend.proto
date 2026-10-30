@@ -32,6 +32,7 @@ message Edge {
 message EdgeList {
     repeated Edge edges = 1;
     LayoutParams layout_params = 2;
+    uint32 num_vertices = 3;
 }
 
 message CartesianCoord {

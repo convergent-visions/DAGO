@@ -140,7 +140,7 @@ def flask_make_graph_structure():
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
 
-    layout_type = request.form.get("layout_type", "cpp")
+    layout_type = request.form.get("layout_type", "hierarchical")
     root_namespace = request.form.get("root", None)
 
     logger = get_logger()
@@ -196,7 +196,7 @@ def flask_make_graph_structure():
         if fallback_used:
             yield _progress_event(
                 "layout_fallback",
-                "Radial layout computed because the C++ layout service was unavailable.",
+                "Radial layout computed because the hierarchical layout could not be computed.",
             )
 
         yield _progress_event("normalizing", "Normalizing graph positions...")
@@ -273,8 +273,35 @@ def save_graph_to_db(graph_uuid: str):
     G_gt = graph_data["graph"]
 
     data = request.get_json(force=True)
-    if not data or "canvas_positions" not in data or "links" not in data:
+    if (
+        not isinstance(data, dict)
+        or "canvas_positions" not in data
+        or "links" not in data
+    ):
         return jsonify({"error": "Canvas positions and links are required"}), 400
+
+    # Omitted annotations remain unchanged; explicit empty lists clear them.
+    for field in ("favorites", "comments"):
+        if field in data and not isinstance(data[field], list):
+            return jsonify({"error": f"{field} must be a list"}), 400
+
+    def valid_node_index(value):
+        return (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and 0 <= value < G_gt.num_vertices()
+        )
+
+    if "favorites" in data and not all(
+        valid_node_index(index) for index in data["favorites"]
+    ):
+        return jsonify({"error": "favorites must contain valid node indices"}), 400
+
+    if "comments" in data and not all(
+        isinstance(comment, dict) and valid_node_index(comment.get("nodeIndex"))
+        for comment in data["comments"]
+    ):
+        return jsonify({"error": "comments must contain valid node references"}), 400
 
     graph_hash = data.get("graph_hash", "")
 
@@ -293,7 +320,13 @@ def save_graph_to_db(graph_uuid: str):
     layout = linearized_layout_to_pairs(linearized_layout)
     vertices_metadata = build_vertex_metadata_for_graph(G_gt)
 
-    additional_config_keys = ["point_size", "space_size", "group_name"]
+    additional_config_keys = [
+        "point_size",
+        "space_size",
+        "group_name",
+        "favorites",
+        "comments",
+    ]
     additional_config = {
         key: data.get(key) for key in additional_config_keys if key in data
     }
@@ -351,7 +384,7 @@ def load_graph_from_json():
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
 
-    layout_type = request.form.get("layout_type", "cpp")
+    layout_type = request.form.get("layout_type", "hierarchical")
     logger = get_logger()
     layout_host, layout_port = get_layout_service_config()
 
@@ -449,8 +482,8 @@ def recompute_layout(graph_uuid: str):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    layout_type = data.get("layout_type", "cpp")
-    if layout_type not in {"cpp", "radial"}:
+    layout_type = data.get("layout_type", "hierarchical")
+    if layout_type not in {"radial", "hierarchical"}:
         return jsonify({"error": "Unsupported layout_type"}), 400
 
     G_gt = graph_data.get("graph")
@@ -531,8 +564,8 @@ def change_category(graph_uuid: str):
     if not category:
         return jsonify({"error": "Missing 'category'"}), 400
 
-    layout_type = data.get("layout_type", "cpp")
-    if layout_type not in {"cpp", "radial"}:
+    layout_type = data.get("layout_type", "hierarchical")
+    if layout_type not in {"radial", "hierarchical"}:
         return jsonify({"error": "Unsupported layout_type"}), 400
 
     full_graph = graph_data.get("full_graph")

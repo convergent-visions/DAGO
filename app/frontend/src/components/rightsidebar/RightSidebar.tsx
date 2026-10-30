@@ -88,6 +88,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
   const handleTabClick = React.useCallback(
     (tab: TabKey) => {
+      onHoverResultCard?.();
       if (tab === activeTab) {
         onExpandedChange(!expanded);
       } else {
@@ -95,7 +96,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         if (!expanded) onExpandedChange(true);
       }
     },
-    [activeTab, expanded, onExpandedChange, onTabChange]
+    [activeTab, expanded, onExpandedChange, onTabChange, onHoverResultCard]
   );
 
   const onResizeStart = (clientX: number) => {
@@ -150,6 +151,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         isResizing ? "transition-none" : "transition-[width] duration-200",
         "overflow-hidden",
       ].join(" ")}
+      onMouseLeave={() => onHoverResultCard?.()}
       style={{ width }}
       aria-expanded={expanded}
     >

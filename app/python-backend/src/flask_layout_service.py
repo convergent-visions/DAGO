@@ -5,7 +5,7 @@ from database_manager import MongoDatabaseManager
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
-from graph_data_storage import GraphDataStorage
+from graph_data_storage import GraphDataStorage, SessionProtectionMiddleware
 from routes import analysis_bp, export_bp, graph_bp, groups_bp, search_bp
 
 load_dotenv()
@@ -41,6 +41,9 @@ def create_app() -> Flask:
     app.register_blueprint(analysis_bp)
     app.register_blueprint(export_bp)
 
+    app.wsgi_app = SessionProtectionMiddleware(
+        app.wsgi_app, app.config["GRAPH_STORAGE"]
+    )
     return app
 
 
