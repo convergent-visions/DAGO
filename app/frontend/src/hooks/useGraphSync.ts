@@ -39,6 +39,7 @@ export function useGraphSync(params: {
     writeQueue.current = writeQueue.current.then(async () => {
       if (version !== requestVersion.current) return;
       try {
+        confirmedState.current = null;
         await updateGraphConfig(currentGraphHash, payload);
         if (version !== requestVersion.current) return;
         confirmedState.current = snapshot;
